@@ -1,219 +1,521 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucky Slots</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lucky Slots 5x3</title>
+<style>
+    * { box-sizing: border-box; }
 
-    <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #170d29, #48216b);
-            color: white;
-        }
+    body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #170d29, #48216b);
+        color: white;
+        padding: 15px;
+    }
 
-        .container {
-            text-align: center;
-            background: #241438;
-            padding: 35px;
-            border-radius: 20px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-            width: 350px;
-        }
+    .container {
+        text-align: center;
+        background: #241438;
+        padding: 22px 20px 26px;
+        border-radius: 20px;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        width: 100%;
+        max-width: 560px;
+    }
 
-        h1 {
-            color: #ffd65a;
-            font-size: 32px;
-            margin-bottom: 30px;
-        }
+    h1 {
+        color: #ffd65a;
+        font-size: 28px;
+        margin: 0 0 12px;
+        letter-spacing: 1px;
+    }
 
-        .slots {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 25px;
-        }
+    /* ---------- баланс и ставка ---------- */
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+    }
 
-        .reel {
-            width: 90px;
-            height: 100px;
-            background: white;
-            border-radius: 12px;
-            color: black;
-            font-size: 55px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border: 3px solid #d9a43e;
-        }
+    .box {
+        flex: 1;
+        background: #1b0f2b;
+        border: 1px solid #4a2f6b;
+        border-radius: 12px;
+        padding: 8px 10px;
+    }
 
-        button {
-            background: linear-gradient(#ffe77c, #e99a19);
-            border: none;
-            padding: 15px 40px;
-            border-radius: 10px;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            color: #351b05;
-        }
+    .box .label {
+        font-size: 11px;
+        color: #a89bc0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-        button:hover {
-            transform: scale(1.05);
-        }
+    .box .value {
+        font-size: 20px;
+        font-weight: bold;
+        color: #ffd65a;
+    }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
+    .bet-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 14px;
+    }
 
-        #result {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 20px 0;
-            min-height: 22px;
-        }
+    .bet-controls button.small {
+        padding: 6px 12px;
+        font-size: 16px;
+        border-radius: 8px;
+    }
 
-        .stats {
-            margin-top: 25px;
-            color: #ccc;
-        }
+    .bet-controls span {
+        font-size: 15px;
+        color: #ccc;
+    }
 
-        .rolling {
-            animation: shake 0.1s infinite alternate;
-        }
+    /* ---------- барабаны 5x3 ---------- */
+    .machine {
+        background: #120a1f;
+        border: 3px solid #d9a43e;
+        border-radius: 16px;
+        padding: 10px;
+        display: inline-block;
+        margin-bottom: 14px;
+    }
 
-        @keyframes shake {
-            from { transform: translateY(-3px); }
-            to { transform: translateY(3px); }
-        }
-    </style>
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+    }
+
+    .cell {
+        width: 62px;
+        height: 62px;
+        background: white;
+        border-radius: 10px;
+        color: black;
+        font-size: 34px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 2px solid #e6c06a;
+        transition: transform 0.1s, box-shadow 0.2s;
+        user-select: none;
+    }
+
+    .cell.rolling {
+        animation: shake 0.1s infinite alternate;
+    }
+
+    .cell.win {
+        box-shadow: 0 0 12px 4px #ffd65a;
+        transform: scale(1.06);
+        border-color: #ffd65a;
+    }
+
+    @keyframes shake {
+        from { transform: translateY(-3px); }
+        to   { transform: translateY(3px); }
+    }
+
+    /* ---------- кнопки ---------- */
+    .controls {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    button {
+        background: linear-gradient(#ffe77c, #e99a19);
+        border: none;
+        padding: 14px 28px;
+        border-radius: 10px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        color: #351b05;
+        transition: transform 0.1s;
+    }
+
+    button:hover:not(:disabled) { transform: scale(1.05); }
+    button:disabled { opacity: 0.55; cursor: wait; }
+
+    button.auto {
+        background: linear-gradient(#9f7aea, #6b46c1);
+        color: white;
+    }
+
+    button.auto.active {
+        background: linear-gradient(#ff6b6b, #c53030);
+    }
+
+    /* ---------- результат ---------- */
+    #result {
+        font-size: 16px;
+        font-weight: bold;
+        margin: 6px 0 12px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 6px;
+    }
+
+    .win-text  { color: #7CFC00; }
+    .lose-text { color: #ff9b9b; }
+
+    .stats {
+        margin-top: 8px;
+        color: #a89bc0;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .stats b { color: #ddd; }
+
+    /* ---------- таблица выплат ---------- */
+    .paytable {
+        margin-top: 14px;
+        border-top: 1px solid #4a2f6b;
+        padding-top: 10px;
+        font-size: 12px;
+        color: #a89bc0;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 3px 14px;
+        text-align: left;
+    }
+
+    .paytable div { display: flex; justify-content: space-between; }
+    .paytable .sym { font-size: 15px; }
+
+    @media (max-width: 520px) {
+        .cell { width: 48px; height: 48px; font-size: 26px; }
+        h1 { font-size: 22px; }
+        .box .value { font-size: 17px; }
+        button { padding: 12px 18px; font-size: 16px; }
+    }
+</style>
 </head>
-
 <body>
 
-    <div class="container">
+<div class="container">
 
-        <h1>LUCKY SLOTS</h1>
+    <h1>🎰 LUCKY SLOTS 5×3</h1>
 
-        <div class="slots">
-            <div class="reel">🍒</div>
-            <div class="reel">🍋</div>
-            <div class="reel">💎</div>
+    <div class="topbar">
+        <div class="box">
+            <div class="label">Баланс</div>
+            <div class="value"><span id="balance">1000</span> ₡</div>
         </div>
-
-        <div id="result">Попробуй свою удачу!</div>
-
-        <button id="spinButton" onclick="spin()">
-            🎰 КРУТИТЬ
-        </button>
-
-        <div class="stats">
-            Спинов: <span id="spins">0</span>
-            <br><br>
-            Выигрышей: <span id="wins">0</span>
+        <div class="box">
+            <div class="label">Ставка за спин</div>
+            <div class="value"><span id="bet">50</span> ₡</div>
         </div>
-
+        <div class="box">
+            <div class="label">Выигрыш</div>
+            <div class="value"><span id="lastWin">0</span> ₡</div>
+        </div>
     </div>
 
-    <script>
-        const symbols = [
-            "🍒", "🍋", "🍊", "🍇",
-            "🍉", "⭐", "💎", "7️⃣"
-        ];
+    <div class="bet-controls">
+        <button class="small" onclick="changeBet(-25)">−25</button>
+        <span>Изменить ставку</span>
+        <button class="small" onclick="changeBet(25)">+25</button>
+    </div>
 
-        const reels = document.querySelectorAll(".reel");
+    <div class="machine">
+        <div class="grid" id="grid"></div>
+    </div>
 
-        let spins = 0;
-        let wins = 0;
-        let isSpinning = false;
+    <div id="result">Сделай ставку и жми «Крутить»!</div>
 
-        function spin() {
+    <div class="controls">
+        <button id="spinButton" onclick="spin()">🎰 КРУТИТЬ</button>
+        <button id="autoButton" class="auto" onclick="toggleAuto()">▶ АВТО</button>
+    </div>
 
-            if (isSpinning) return;
+    <div class="stats">
+        Спинов: <b><span id="spins">0</span></b> &nbsp;|&nbsp;
+        Выигрышей: <b><span id="wins">0</span></b> &nbsp;|&nbsp;
+        Макс. выигрыш: <b><span id="maxWin">0</span> ₡</b>
+    </div>
 
-            isSpinning = true;
+    <div class="paytable" id="paytable"></div>
 
-            const button = document.getElementById("spinButton");
-            const result = document.getElementById("result");
+</div>
 
-            button.disabled = true;
-            result.textContent = "Барабаны крутятся...";
+<script>
+/* ======================== НАСТРОЙКИ ======================== */
+const START_BALANCE = 1000;
+const MIN_BET = 25;
+const BET_STEP = 25;
+const MAX_BET = 500;
+const COLS = 5;
+const ROWS = 3;
 
-            spins++;
-            document.getElementById("spins").textContent = spins;
+/* Символы и их множители (за 3/4/5 в линии) */
+const SYMBOLS = [
+    { icon: "🍒", name: "Вишня",   pay: [5,  15,  40] },
+    { icon: "🍋", name: "Лимон",   pay: [6,  18,  50] },
+    { icon: "🍊", name: "Апельсин",pay: [7,  20,  60] },
+    { icon: "🍇", name: "Виноград",pay: [8,  25,  75] },
+    { icon: "🍉", name: "Арбуз",   pay: [10, 30,  90] },
+    { icon: "⭐", name: "Звезда",  pay: [12, 40, 120] },
+    { icon: "💎", name: "Алмаз",   pay: [18, 60, 200] },
+    { icon: "7️⃣", name: "Семёрка", pay: [25, 100, 500] },
+];
 
-            const finalSymbols = reels.length
-                ? Array.from(reels, () =>
-                    symbols[Math.floor(Math.random() * symbols.length)]
-                  )
-                : [];
+/* Линии выплат: индексы ячеек [ряд][колонка] -> ряд*5+колонка */
+const LINES = [
+    [0, 1, 2, 3, 4],       // верхняя
+    [5, 6, 7, 8, 9],       // средняя
+    [10, 11, 12, 13, 14],  // нижняя
+    [0, 6, 12, 8, 4],      // V
+    [10, 6, 12, 8, 14],    // ^
+    [0, 5, 10, 11, 12],    // угол
+    [4, 9, 14, 13, 12],    // угол
+    [0, 5, 10, 6, 2],      // зигзаг
+    [4, 9, 14, 8, 2],      // зигзаг
+    [5, 1, 2, 3, 9],       // волна
+];
 
-            reels.forEach((reel, index) => {
+/* ======================== СОСТОЯНИЕ ======================== */
+let balance = START_BALANCE;
+let bet = 50;
+let spins = 0;
+let wins = 0;
+let maxWin = 0;
+let isSpinning = false;
+let autoMode = false;
+let autoTimer = null;
 
-                reel.classList.add("rolling");
+const gridEl    = document.getElementById("grid");
+const resultEl  = document.getElementById("result");
+const spinBtn   = document.getElementById("spinButton");
+const autoBtn   = document.getElementById("autoButton");
+const balanceEl = document.getElementById("balance");
+const betEl     = document.getElementById("bet");
+const lastWinEl = document.getElementById("lastWin");
+const spinsEl   = document.getElementById("spins");
+const winsEl    = document.getElementById("wins");
+const maxWinEl  = document.getElementById("maxWin");
 
-                let counter = 0;
+/* ======================== ИНИЦИАЛИЗАЦИЯ ======================== */
+function buildGrid() {
+    gridEl.innerHTML = "";
+    for (let i = 0; i < COLS * ROWS; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.index = i;
+        cell.textContent = SYMBOLS[i % SYMBOLS.length].icon;
+        gridEl.appendChild(cell);
+    }
+}
 
-                const interval = setInterval(() => {
+function buildPaytable() {
+    const pt = document.getElementById("paytable");
+    pt.innerHTML = SYMBOLS
+        .slice()
+        .reverse()
+        .map(s => `<div><span class="sym">${s.icon} ${s.name}</span><span>x${s.pay[2]}</span></div>`)
+        .join("");
+}
 
-                    reel.textContent =
-                        symbols[Math.floor(Math.random() * symbols.length)];
+function updateUI() {
+    balanceEl.textContent = balance;
+    betEl.textContent = bet;
+    spinsEl.textContent = spins;
+    winsEl.textContent = wins;
+    maxWinEl.textContent = maxWin;
+}
 
-                    counter++;
+/* ======================== СТАВКА ======================== */
+function changeBet(delta) {
+    if (isSpinning) return;
+    const newBet = Math.max(MIN_BET, Math.min(MAX_BET, bet + delta));
+    if (newBet === bet) return;
+    bet = newBet;
+    updateUI();
+}
 
-                    if (counter >= 15 + index * 7) {
+/* ======================== СПИН ======================== */
+function spin() {
+    if (isSpinning) return;
 
-                        clearInterval(interval);
+    if (balance < bet) {
+        stopAuto();
+        resultEl.innerHTML = '<span class="lose-text">Недостаточно кредитов! Пополни баланс или уменьши ставку.</span>';
+        return;
+    }
 
-                        reel.textContent = finalSymbols[index];
-                        reel.classList.remove("rolling");
+    isSpinning = true;
+    spinBtn.disabled = true;
 
-                        if (index === reels.length - 1) {
-                            finishSpin(finalSymbols);
-                        }
-                    }
+    balance -= bet;
+    spins++;
+    resultEl.innerHTML = "Барабаны крутятся...";
+    lastWinEl.textContent = "0";
+    updateUI();
 
-                }, 100);
+    /* Останавливаем отображение предыдущего выигрыша */
+    document.querySelectorAll(".cell.win").forEach(c => c.classList.remove("win"));
 
+    const cells = Array.from(gridEl.children);
+
+    /* Итоговая сетка */
+    const finalIcons = Array.from({ length: COLS * ROWS }, () =>
+        SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].icon
+    );
+
+    let finishedReels = 0;
+
+    /* Анимация по колонкам */
+    for (let col = 0; col < COLS; col++) {
+        const colCells = [];
+        for (let row = 0; row < ROWS; row++) {
+            colCells.push(cells[row * COLS + col]);
+        }
+
+        colCells.forEach(c => c.classList.add("rolling"));
+
+        let counter = 0;
+        const ticks = 10 + col * 5;
+
+        const interval = setInterval(() => {
+            colCells.forEach(c => {
+                c.textContent = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].icon;
             });
-        }
+            counter++;
 
-        function finishSpin(finalSymbols) {
+            if (counter >= ticks) {
+                clearInterval(interval);
 
-            const result = document.getElementById("result");
-            const button = document.getElementById("spinButton");
+                /* Финальные символы колонки */
+                for (let row = 0; row < ROWS; row++) {
+                    const idx = row * COLS + col;
+                    cells[idx].textContent = finalIcons[idx];
+                    cells[idx].classList.remove("rolling");
+                }
 
-            if (finalSymbols.every(symbol =>
-                symbol === finalSymbols[0])) {
-
-                wins++;
-
-                document.getElementById("wins").textContent = wins;
-
-                result.textContent = "🎉 ДЖЕКПОТ! ТРИ ОДИНАКОВЫХ!";
-
-            } else if (new Set(finalSymbols).size === 2) {
-
-                result.textContent = "✨ Почти получилось!";
-
-            } else {
-
-                result.textContent = "Не повезло! Попробуй ещё.";
-
+                finishedReels++;
+                if (finishedReels === COLS) {
+                    finishSpin(finalIcons, cells);
+                }
             }
+        }, 80);
+    }
+}
 
-            isSpinning = false;
-            button.disabled = false;
+/* ======================== ПОДСЧЁТ ВЫИГРЫША ======================== */
+function countLine(line, icons) {
+    /* Берём символы линии */
+    const lineIcons = line.map(i => icons[i]);
+
+    /* Считаем подряд идущие одинаковые с первого символа */
+    const first = lineIcons[0];
+    let count = 1;
+    for (let i = 1; i < lineIcons.length; i++) {
+        if (lineIcons[i] === first) count++;
+        else break;
+    }
+
+    if (count < 3) return { win: 0, count: 0, icon: first, line };
+
+    const symbol = SYMBOLS.find(s => s.icon === first);
+    const mult = symbol.pay[count - 3]; // 3->[0], 4->[1], 5->[2]
+    const win = Math.round(bet * mult);
+
+    return { win, count, icon: first, line };
+}
+
+function finishSpin(icons, cells) {
+    let totalWin = 0;
+    const winningCells = new Set();
+
+    LINES.forEach(line => {
+        const res = countLine(line, icons);
+        if (res.win > 0) {
+            totalWin += res.win;
+            /* Подсвечиваем выигрышные ячейки (первые count) */
+            for (let i = 0; i < res.count; i++) {
+                winningCells.add(line[i]);
+            }
         }
+    });
 
-    </script>
+    if (totalWin > 0) {
+        balance += totalWin;
+        wins++;
+        if (totalWin > maxWin) maxWin = totalWin;
+
+        winningCells.forEach(i => cells[i].classList.add("win"));
+
+        resultEl.innerHTML = `<span class="win-text">🎉 ВЫИГРЫШ: +${totalWin} ₡</span>`;
+        lastWinEl.textContent = totalWin;
+    } else {
+        resultEl.innerHTML = '<span class="lose-text">Не повезло! Попробуй ещё.</span>';
+    }
+
+    updateUI();
+
+    isSpinning = false;
+    spinBtn.disabled = false;
+
+    /* Автоспин */
+    if (autoMode && balance >= bet) {
+        autoTimer = setTimeout(spin, 900);
+    } else if (autoMode && balance < bet) {
+        stopAuto();
+        resultEl.innerHTML = '<span class="lose-text">Автоспин остановлен: недостаточно кредитов.</span>';
+    }
+}
+
+/* ======================== АВТОСПИН ======================== */
+function toggleAuto() {
+    if (autoMode) {
+        stopAuto();
+    } else {
+        if (balance < bet) {
+            resultEl.innerHTML = '<span class="lose-text">Недостаточно кредитов для автоспина.</span>';
+            return;
+        }
+        autoMode = true;
+        autoBtn.classList.add("active");
+        autoBtn.textContent = "⏸ СТОП";
+        if (!isSpinning) spin();
+    }
+}
+
+function stopAuto() {
+    autoMode = false;
+    if (autoTimer) {
+        clearTimeout(autoTimer);
+        autoTimer = null;
+    }
+    autoBtn.classList.remove("active");
+    autoBtn.textContent = "▶ АВТО";
+}
+
+/* ======================== ЗАПУСК ======================== */
+buildGrid();
+buildPaytable();
+updateUI();
+</script>
 
 </body>
 </html>
