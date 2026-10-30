@@ -20,7 +20,6 @@
         transition: background 0.6s ease;
     }
 
-    /* Бонусный режим — жёлтый фон */
     body.bonus-mode {
         background: radial-gradient(circle at 50% 0%, #ffe066, #f5a623 45%, #b87400 100%);
         animation: bonusPulse 2.5s ease-in-out infinite;
@@ -68,7 +67,6 @@
         letter-spacing: 1px;
     }
 
-    /* ---------- верхняя панель ---------- */
     .topbar {
         display: flex;
         justify-content: space-between;
@@ -100,7 +98,6 @@
 
     .box.highlight .value { color: #ff9b00; }
 
-    /* ---------- ставка ---------- */
     .bet-controls {
         display: flex;
         align-items: center;
@@ -117,7 +114,6 @@
 
     .bet-controls span { font-size: 14px; color: #ccc; }
 
-    /* ---------- барабаны ---------- */
     .machine {
         background: #120a1f;
         border: 3px solid #d9a43e;
@@ -153,10 +149,14 @@
 
     .cell.rolling { animation: shake 0.1s infinite alternate; }
 
-    /* Медленное докручивание при 2-х BONUS */
     .cell.slow-rolling {
         animation: slowShake 0.5s infinite alternate;
         background: #fff3c4;
+    }
+
+    @keyframes shake {
+        from { transform: translateY(-3px); }
+        to   { transform: translateY(3px); }
     }
 
     @keyframes slowShake {
@@ -176,7 +176,6 @@
         box-shadow: 0 0 12px 3px rgba(255, 200, 0, 0.8);
     }
 
-    /* ---------- кнопки ---------- */
     .controls {
         display: flex;
         gap: 10px;
@@ -203,7 +202,16 @@
     button.auto { background: linear-gradient(#9f7aea, #6b46c1); color: white; }
     button.auto.active { background: linear-gradient(#ff6b6b, #c53030); }
 
-    /* ---------- результат ---------- */
+    button.buy {
+        background: linear-gradient(#ffe066, #ffb800);
+        color: #4a2f00;
+        border: 2px solid #b87400;
+        font-size: 14px;
+        padding: 12px 16px;
+    }
+    button.buy:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.buy:not(:disabled):hover { transform: scale(1.05); }
+
     #result {
         font-size: 15px;
         font-weight: bold;
@@ -222,7 +230,6 @@
     .container.bonus-mode .win-text { color: #2e7d32; }
     .container.bonus-mode .lose-text { color: #b03030; }
 
-    /* ---------- бонус-панель ---------- */
     #bonusPanel {
         display: none;
         background: linear-gradient(90deg, #ffe066, #ffb800);
@@ -239,7 +246,6 @@
     #bonusPanel.visible { display: flex; justify-content: space-around; align-items: center; gap: 10px; }
     #bonusPanel .mult { font-size: 20px; color: #a05a00; }
 
-    /* ---------- статистика ---------- */
     .stats {
         margin-top: 6px;
         color: #a89bc0;
@@ -249,7 +255,6 @@
 
     .stats b { color: #ddd; }
 
-    /* ---------- таблица выплат ---------- */
     .paytable {
         margin-top: 12px;
         border-top: 1px solid #4a2f6b;
@@ -280,7 +285,6 @@
 
     <h1 id="title">🎰 LUCKY SLOTS 5×3</h1>
 
-    <!-- Бонусная панель -->
     <div id="bonusPanel">
         <span>🎁 БОНУС!</span>
         <span>Фриспины: <b id="freeSpins">0</b></span>
@@ -317,6 +321,7 @@
     <div class="controls">
         <button id="spinButton" onclick="spin()">🎰 КРУТИТЬ</button>
         <button id="autoButton" class="auto" onclick="toggleAuto()">▶ АВТО</button>
+        <button id="buyBonusBtn" class="buy" onclick="buyBonus()">🎁 КУПИТЬ БОНУС (<span id="bonusPrice">2500</span> ₡)</button>
     </div>
 
     <div class="stats">
@@ -339,7 +344,7 @@ const COLS = 5;
 const ROWS = 3;
 const BONUS_SPINS = 10;
 
-/* Обычные символы */
+/* Обычные символы (для линий выплат) */
 const SYMBOLS = [
     { icon: "🍒", name: "Вишня",    pay: [5,  15,  40] },
     { icon: "🍋", name: "Лимон",    pay: [6,  18,  50] },
@@ -351,8 +356,15 @@ const SYMBOLS = [
     { icon: "7️⃣", name: "Семёрка",  pay: [25, 100, 500] },
 ];
 
-/* Бонусный символ — не входит в обычные линии выплат */
+/* Бонусный символ — НЕ участвует в линиях, только триггерит бонус */
 const BONUS_ICON = "🅱️";
+
+/* Пул для генерации выпадения на барабанах:
+   обычные символы + BONUS с шансом ~4% */
+const SPIN_POOL = [
+    ...SYMBOLS.map(s => s.icon),
+    BONUS_ICON, BONUS_ICON, BONUS_ICON, BONUS_ICON, // ~4% шанс на клетку (4 из 12)
+];
 
 /* Линии выплат */
 const LINES = [
@@ -378,12 +390,10 @@ let isSpinning = false;
 let autoMode = false;
 let autoTimer = null;
 
-/* Бонусное состояние */
 let bonusActive = false;
 let freeSpinsLeft = 0;
 let bonusMultiplier = 1;
 let bonusTotalWin = 0;
-let bonusSpinInProgress = false;
 
 const gridEl     = document.getElementById("grid");
 const resultEl   = document.getElementById("result");
@@ -455,11 +465,11 @@ function enterBonusMode() {
     bonusPanel.classList.add("visible");
     betControls.style.display = "none";
     spinBtn.disabled = false;
+    document.getElementById("buyBonusBtn").disabled = true;
 
     updateUI();
     resultEl.innerHTML = '<span class="bonus-text">🎁 БОНУС АКТИВИРОВАН! 10 фриспинов. Множитель растёт с каждым выигрышем!</span>';
 
-    /* Автоматически запускаем первый фриспин */
     setTimeout(() => { if (bonusActive) spin(); }, 900);
 }
 
@@ -480,6 +490,7 @@ function exitBonusMode() {
 
     resultEl.innerHTML = `<span class="win-text">🏁 Бонус окончен! Итого за бонус: +${bonusTotalWin} ₡</span>`;
     updateUI();
+    updateBonusPrice();
 }
 
 /* ======================== СПИН ======================== */
@@ -487,7 +498,6 @@ function spin() {
     if (isSpinning) return;
 
     if (bonusActive) {
-        /* В бонусе спины бесплатные */
         if (freeSpinsLeft <= 0) return;
         runSpin(true);
     } else {
@@ -519,18 +529,16 @@ function runSpin(isFree) {
 
     const cells = Array.from(gridEl.children);
 
-    /* Генерируем итоговую сетку. В бонусе — немного больше шанс на 💎 (+фриспин) */
+    /* Генерируем итоговую сетку.
+       ВАЖНО: используем SPIN_POOL — иначе BONUS никогда не выпадет.
+       В бонусе дополнительно повышаем шанс на 💎 (+1 фриспин). */
     const finalIcons = Array.from({ length: COLS * ROWS }, () => {
-        let r = Math.random();
-        if (isFree && r < 0.05) return "💎"; // бонусный бонус: +1 фриспин
-        return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].icon;
+        if (isFree && Math.random() < 0.05) return "💎";
+        return SPIN_POOL[Math.floor(Math.random() * SPIN_POOL.length)];
     });
 
-    /* Проверяем, сколько символов BONUS выпало в итоге */
-    const bonusCount = finalIcons.filter(i => i === BONUS_ICON).length;
-    const hasTwoBonus = (bonusCount === 2);
-
     let finishedReels = 0;
+    let slowModeTriggered = false;
 
     for (let col = 0; col < COLS; col++) {
         const colCells = [];
@@ -538,6 +546,7 @@ function runSpin(isFree) {
             colCells.push(cells[row * COLS + col]);
         }
 
+        /* Анимация тряски на время прокрутки */
         colCells.forEach(c => c.classList.add("rolling"));
 
         let counter = 0;
@@ -546,7 +555,7 @@ function runSpin(isFree) {
 
         const interval = setInterval(() => {
             colCells.forEach(c => {
-                c.textContent = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].icon;
+                c.textContent = SPIN_POOL[Math.floor(Math.random() * SPIN_POOL.length)];
             });
             counter++;
 
@@ -557,7 +566,6 @@ function runSpin(isFree) {
                     const idx = row * COLS + col;
                     cells[idx].textContent = finalIcons[idx];
                     cells[idx].classList.remove("rolling");
-
                     if (finalIcons[idx] === BONUS_ICON) {
                         cells[idx].classList.add("bonus-symbol");
                     }
@@ -565,85 +573,58 @@ function runSpin(isFree) {
 
                 finishedReels++;
 
-                /* Если 2 символа B уже видны — оставшиеся колонки докручиваются медленно */
-                if (hasTwoBonus && finishedReels < COLS) {
-                    slowRemainingReels(col + 1, cells, finalIcons, () => {
-                        finishSpin(finalIcons, cells, isFree);
-                    });
-                } else if (finishedReels === COLS) {
+                if (finishedReels === COLS) {
                     finishSpin(finalIcons, cells, isFree);
                 }
             }
         }, tickSpeed);
     }
-}
 
-/* Медленное докручивание оставшихся колонок при 2-х BONUS */
-function slowRemainingReels(startCol, cells, finalIcons, onDone) {
-    let col = startCol;
-
-    function processCol() {
-        if (col >= COLS) { onDone(); return; }
-
-        const colCells = [];
-        for (let row = 0; row < ROWS; row++) {
-            colCells.push(cells[row * COLS + col]);
+    /* Через 400 мс проверяем: если в ИТОГОВОЙ сетке ровно 2 BONUS —
+       показываем предупреждение «третий решит судьбу» */
+    setTimeout(() => {
+        const bonusCount = finalIcons.filter(i => i === BONUS_ICON).length;
+        if (bonusCount === 2 && !slowModeTriggered && !isFree) {
+            slowModeTriggered = true;
+            resultEl.innerHTML = '<span class="bonus-text">⚡ ДВА BONUS! Третий решит судьбу...</span>';
         }
-
-        colCells.forEach(c => c.classList.add("slow-rolling"));
-
-        resultEl.innerHTML = '<span class="bonus-text">⚡ ДВА BONUS! Третий решит судьбу...</span>';
-
-        let counter = 0;
-        const ticks = 14;
-
-        const interval = setInterval(() => {
-            colCells.forEach(c => {
-                c.textContent = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)].icon;
-            });
-            counter++;
-
-            if (counter >= ticks) {
-                clearInterval(interval);
-
-                for (let row = 0; row < ROWS; row++) {
-                    const idx = row * COLS + col;
-                    cells[idx].textContent = finalIcons[idx];
-                    cells[idx].classList.remove("slow-rolling");
-                    if (finalIcons[idx] === BONUS_ICON) {
-                        cells[idx].classList.add("bonus-symbol");
-                    }
-                }
-
-                col++;
-                if (col < COLS) {
-                    setTimeout(processCol, 350);
-                } else {
-                    onDone();
-                }
-            }
-        }, 160); // медленнее!
-    }
-
-    setTimeout(processCol, 300);
+    }, 400);
 }
 
 /* ======================== ПОДСЧЁТ ВЫИГРЫША ======================== */
+/* Ищет ЛЮБЫЕ 3+ подряд одинаковых символов на линии.
+   Несколько групп на одной линии суммируются.
+   BONUS не платит как линия (он триггер). */
+const NON_PAYING = new Set([BONUS_ICON]);
+
 function countLine(line, icons) {
     const lineIcons = line.map(i => icons[i]);
-    const first = lineIcons[0];
-    let count = 1;
-    for (let i = 1; i < lineIcons.length; i++) {
-        if (lineIcons[i] === first) count++;
-        else break;
+    let totalWin = 0;
+    const winCells = [];
+
+    let i = 0;
+    while (i < lineIcons.length) {
+        const sym = lineIcons[i];
+        if (!sym || NON_PAYING.has(sym)) { i++; continue; }
+
+        const def = SYMBOLS.find(s => s.icon === sym);
+        if (!def) { i++; continue; }
+
+        let runLen = 1;
+        while (i + runLen < lineIcons.length && lineIcons[i + runLen] === sym) {
+            runLen++;
+        }
+
+        if (runLen >= 3) {
+            const multIdx = Math.min(runLen - 3, 2);
+            totalWin += Math.round(bet * def.pay[multIdx]);
+            for (let k = 0; k < runLen; k++) winCells.push(line[i + k]);
+        }
+
+        i += runLen;
     }
 
-    if (count < 3) return { win: 0, count: 0, line };
-    const symbol = SYMBOLS.find(s => s.icon === first);
-    if (!symbol) return { win: 0, count: 0, line };
-
-    const mult = symbol.pay[count - 3];
-    return { win: Math.round(bet * mult), count, line };
+    return { win: totalWin, line, cells: winCells };
 }
 
 function finishSpin(icons, cells, isFree) {
@@ -654,17 +635,15 @@ function finishSpin(icons, cells, isFree) {
         const res = countLine(line, icons);
         if (res.win > 0) {
             totalWin += res.win;
-            for (let i = 0; i < res.count; i++) winningCells.add(line[i]);
+            res.cells.forEach(idx => winningCells.add(idx));
         }
     });
 
-    /* Считаем количество BONUS в сетке */
     const bonusCount = icons.filter(i => i === BONUS_ICON).length;
 
     /* --- БОНУС АКТИВИРУЕТСЯ? --- */
     if (!bonusActive && bonusCount >= 3) {
         winningCells.forEach(i => cells[i].classList.add("win"));
-        /* Обнуляем фриспины — сработает бонус */
         setTimeout(() => enterBonusMode(), 700);
         isSpinning = false;
         spinBtn.disabled = true;
@@ -673,18 +652,16 @@ function finishSpin(icons, cells, isFree) {
 
     /* --- Обработка выигрыша --- */
     if (bonusActive) {
-        /* В бонусе: множитель применяется к выигрышу */
         if (totalWin > 0) {
             const boosted = totalWin * bonusMultiplier;
             bonusTotalWin += boosted;
             balance += boosted;
             totalWin = boosted;
-            bonusMultiplier++; // растёт с каждым выигрышным спином
+            bonusMultiplier++;
             wins++;
             if (boosted > maxWin) maxWin = boosted;
         }
 
-        /* Символ 💎 даёт +1 фриспин */
         const diamonds = icons.filter(i => i === "💎").length;
         if (diamonds > 0) {
             freeSpinsLeft += diamonds;
@@ -729,7 +706,6 @@ function finishSpin(icons, cells, isFree) {
     isSpinning = false;
     spinBtn.disabled = false;
 
-    /* Автоспин */
     if (autoMode && balance >= bet) {
         autoTimer = setTimeout(spin, 900);
     } else if (autoMode && balance < bet) {
@@ -740,7 +716,7 @@ function finishSpin(icons, cells, isFree) {
 
 /* ======================== АВТОСПИН ======================== */
 function toggleAuto() {
-    if (bonusActive) return; // в бонусе авто не нужно
+    if (bonusActive) return;
     if (autoMode) { stopAuto(); return; }
     if (balance < bet) {
         resultEl.innerHTML = '<span class="lose-text">Недостаточно кредитов для автоспина.</span>';
@@ -759,10 +735,52 @@ function stopAuto() {
     autoBtn.textContent = "▶ АВТО";
 }
 
+/* ======================== ПОКУПКА БОНУСА ======================== */
+const BONUS_PRICE_MULT = 50;
+
+function getBonusPrice() {
+    return bet * BONUS_PRICE_MULT;
+}
+
+function updateBonusPrice() {
+    const el = document.getElementById("bonusPrice");
+    if (el) el.textContent = getBonusPrice();
+    const btn = document.getElementById("buyBonusBtn");
+    if (btn) btn.disabled = (balance < getBonusPrice()) || bonusActive || isSpinning;
+}
+
+function buyBonus() {
+    if (bonusActive || isSpinning) return;
+
+    const price = getBonusPrice();
+    if (balance < price) {
+        resultEl.innerHTML = `<span class="lose-text">Недостаточно кредитов! Нужно ${price} ₡.</span>`;
+        return;
+    }
+
+    balance -= price;
+    updateUI();
+    updateBonusPrice();
+
+    resultEl.innerHTML = '<span class="bonus-text">🎁 Покупка бонуса принята!</span>';
+
+    setTimeout(() => {
+        enterBonusMode();
+    }, 500);
+}
+
+/* ======================== ОБНОВЛЕНИЕ UI (патч) ======================== */
+const _oldUpdateUI = updateUI;
+updateUI = function() {
+    _oldUpdateUI();
+    updateBonusPrice();
+};
+
 /* ======================== ЗАПУСК ======================== */
 buildGrid();
 buildPaytable();
 updateUI();
+updateBonusPrice();
 </script>
 
 </body>
